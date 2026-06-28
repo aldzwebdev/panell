@@ -9,20 +9,20 @@ x-common:
     MYSQL_USER: "pterodactyl"
 
   panel: &panel-environment
-    APP_URL: "https://pterodactyl.example.com"  # WAJIB ganti dengan domain asli
-    APP_TIMEZONE: "UTC"             # Sesuaikan zona waktu
-    APP_SERVICE_AUTHOR: "noreply@example.com"
-    TRUSTED_PROXIES: "*"  # Hanya subnet internal
-    # LE_EMAIL: ""       # Aktifkan jika pakai Let's Encrypt
+    APP_URL: "https://panel.domainanda.com"  # WAJIB ganti dengan domain asli
+    APP_TIMEZONE: "Asia/Jakarta"             # Sesuaikan zona waktu
+    APP_SERVICE_AUTHOR: "admin@domainanda.com"
+    TRUSTED_PROXIES: "172.20.0.0/16,127.0.0.1"  # Hanya subnet internal
+    # LE_EMAIL: "admin@domainanda.com"       # Aktifkan jika pakai Let's Encrypt
 
   mail: &mail-environment
-    MAIL_FROM: "noreply@example.com"
+    MAIL_FROM: "panel@domainanda.com"
     MAIL_DRIVER: "smtp"
     MAIL_HOST: "smtp.gmail.com"              # Contoh pakai SMTP eksternal
     MAIL_PORT: "587"
-    MAIL_USERNAME: ""          # Isi jika perlu
-    MAIL_PASSWORD: "l"       # Isi jika perlu
-    MAIL_ENCRYPTION: "true"                   # tls/ssl/null
+    MAIL_USERNAME: "user@gmail.com"          # Isi jika perlu
+    MAIL_PASSWORD: "app_password_here"       # Isi jika perlu
+    MAIL_ENCRYPTION: "tls"                   # tls/ssl/null
 
 # ==================== SERVICES ====================
 services:
@@ -102,4 +102,3 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/16
-          gateway: 172.20.0.1
