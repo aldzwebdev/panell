@@ -1,0 +1,105 @@
+version: '3.8'
+
+# ==================== ANCHOR DENGAN VALIDASI ====================
+x-common:
+  database: &db-environment
+    MYSQL_PASSWORD: &db-password "CHANGE_ME_COMPLEX_12#"
+    MYSQL_ROOT_PASSWORD: "CHANGE_ME_ROOT_STRONG@2026"
+    MYSQL_DATABASE: "panel"
+    MYSQL_USER: "pterodactyl"
+
+  panel: &panel-environment
+    APP_URL: "https://pterodactyl.example.com"  # WAJIB ganti dengan domain asli
+    APP_TIMEZONE: "UTC"             # Sesuaikan zona waktu
+    APP_SERVICE_AUTHOR: "noreply@example.com"
+    TRUSTED_PROXIES: "*"  # Hanya subnet internal
+    # LE_EMAIL: ""       # Aktifkan jika pakai Let's Encrypt
+
+  mail: &mail-environment
+    MAIL_FROM: "noreply@example.com"
+    MAIL_DRIVER: "smtp"
+    MAIL_HOST: "smtp.gmail.com"              # Contoh pakai SMTP eksternal
+    MAIL_PORT: "587"
+    MAIL_USERNAME: ""          # Isi jika perlu
+    MAIL_PASSWORD: "l"       # Isi jika perlu
+    MAIL_ENCRYPTION: "true"                   # tls/ssl/null
+
+# ==================== SERVICES ====================
+services:
+  database:
+    image: mariadb:10.11  # Versi lebih stabil & aman
+    restart: always
+    command: 
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - "/srv/pterodactyl/database:/var/lib/mysql"
+      - "./custom-mysql.cnf:/etc/mysql/conf.d/custom.cnf:ro"  # Opsional tuning
+    environment:
+      <<: *db-environment
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pterodactyl_net
+
+  cache:
+    image: redis:7-alpine  # Upgrade ke Redis 7
+    restart: always
+    command: redis-server --appendonly yes --requirepass "REDIS_PASS_CHANGE"  # Password opsional
+    volumes:
+      - "/srv/pterodactyl/redis:/data"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - pterodactyl_net
+
+  panel:
+    image: ghcr.io/pterodactyl/panel:latest
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:          # Gantikan links (deprecated)
+      database:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    volumes:
+      - "/srv/pterodactyl/var/:/app/var/"
+      - "/srv/pterodactyl/nginx/:/etc/nginx/http.d/"
+      - "/srv/pterodactyl/certs/:/etc/letsencrypt/"
+      - "/srv/pterodactyl/logs/:/app/storage/logs"
+      - "./php-override.ini:/usr/local/etc/php/conf.d/override.ini:ro"  # Opsional tuning PHP
+    environment:
+      <<: [*panel-environment, *mail-environment]
+      DB_PASSWORD: *db-password
+      APP_ENV: "production"
+      APP_ENVIRONMENT_ONLY: "false"
+      CACHE_DRIVER: "redis"
+      SESSION_DRIVER: "redis"
+      QUEUE_DRIVER: "redis"
+      REDIS_HOST: "cache"
+      REDIS_PASSWORD: "REDIS_PASS_CHANGE"  # Sesuai dengan password di cache
+      DB_HOST: "database"
+      DB_PORT: "3306"
+    logging:             # Tambahan log terstruktur
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ==================== NETWORK DENGAN SUBNET JELAS ====================
+networks:
+  pterodactyl_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
